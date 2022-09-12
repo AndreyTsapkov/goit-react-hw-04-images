@@ -13,7 +13,7 @@ export const Modal = ({ onClose, images, id }) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, []); // eslint-disable-line
 
   const handleKeyDown = event => {
     if (event.code === 'Escape') {
