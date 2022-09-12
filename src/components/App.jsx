@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { fetchImages } from 'services/images-api';
 import { AppContainer } from './App.styled';
 import { Loader } from './Loader';
@@ -8,113 +8,101 @@ import { ImageGallery } from './ImageGallery';
 import { LoadMore } from './Button';
 import { Modal } from './Modal';
 
-export class App extends Component {
-  state = {
-    searchQuery: '',
-    images: [],
-    idImage: null,
-    page: 1,
-    per_page: 12,
-    isLoading: false,
-    loadMore: false,
-    showModal: false,
-    isEmpty: false,
-    error: null,
-  };
+export const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [idImage, setIdImage] = useState(null);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadMore, setLoadMore] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [error, setError] = useState(null);
+  const PER_PAGE = 12;
 
-  componentDidUpdate(_, prevState) {
-    const { searchQuery, page } = this.state;
+  useEffect(() => {
+    getImages(searchQuery, page);
+  }, [searchQuery, page]);
 
-    if (prevState.searchQuery !== searchQuery || prevState.page !== page) {
-      this.getImages(searchQuery, page);
-    }
-  }
-
-  getImages = async (query, page) => {
+  const getImages = async (query, page) => {
     if (!query) return;
 
-    this.setState({ isLoading: true });
+    setIsLoading(true);
 
     try {
       const { hits, totalHits } = await fetchImages(query, page);
 
-      const isLoadMore =
-        this.state.page < Math.round(totalHits / this.state.per_page);
-
       if (hits.length === 0) {
-        this.setState({ isEmpty: true });
+        setIsEmpty(true);
       }
 
-      this.setState(prevState => ({
-        images: [...prevState.images, ...hits],
-        loadMore: isLoadMore,
-      }));
+      setImages(prevImages => [...prevImages, ...hits]);
+      setLoadMore(page < Math.round(totalHits / PER_PAGE));
     } catch (error) {
-      this.setState({ error: error.message });
+      setError(error.message);
     } finally {
-      this.setState({ isLoading: false });
+      setIsLoading(false);
     }
   };
 
-  loadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleChangeSearchQuery = searchQuery => {
+    setSearchQuery(searchQuery);
+    setPage(1);
+    setLoadMore(false);
+    setImages([]);
+    setIsEmpty(false);
   };
 
-  handleShowModal = event => {
+  const handleShowModal = event => {
+    setShowModal(true);
+    setIdImage(event.currentTarget.dataset.id);
     this.setState({ showModal: true, idImage: event.currentTarget.dataset.id });
   };
 
-  handleCloseModal = () => {
-    this.setState({ showModal: false });
-  };
+  return (
+    <AppContainer>
+      <Searchbar onSubmit={handleChangeSearchQuery} />
 
-  handleChangeSearchQuery = searchQuery => {
-    this.setState({
-      searchQuery: searchQuery,
-      page: 1,
-      loadMore: false,
-      images: [],
-      isEmpty: false,
-    });
-  };
-  render() {
-    const {
-      page,
-      loadMore,
-      showModal,
-      images,
-      idImage,
-      isLoading,
-      isEmpty,
-      error,
-    } = this.state;
+      {isLoading && <Loader />}
+      {isEmpty && (
+        <div
+          style={{
+            margin: '0 auto',
+          }}
+        >
+          <p
+            style={{
+              textAlign: 'center',
+              fontSize: '24px',
+              marginBottom: '20px',
+            }}
+          >
+            No images found for your request
+          </p>
+          <img src={ErrorImage} alt={error} />
+        </div>
+      )}
 
-    return (
-      <AppContainer>
-        <Searchbar onSubmit={this.handleChangeSearchQuery} />
+      {searchQuery && (
+        <ImageGallery showModal={handleShowModal} images={images} />
+      )}
 
-        {isLoading && <Loader />}
-        {isEmpty && (
-          <div>
-            <p>No images found for your request</p>
-            <img src={ErrorImage} alt={error} />
-          </div>
-        )}
+      {loadMore && (
+        <LoadMore
+          onClick={() => {
+            setPage(page => page + 1);
+          }}
+          page={page}
+        />
+      )}
 
-        {console.log(images)}
-
-        <ImageGallery showModal={this.handleShowModal} images={images} />
-
-        {loadMore && <LoadMore onClick={this.loadMore} page={page} />}
-
-        {showModal && (
-          <Modal
-            images={images}
-            id={Number(idImage)}
-            onClose={this.handleCloseModal}
-          />
-        )}
-      </AppContainer>
-    );
-  }
-}
+      {showModal && (
+        <Modal
+          images={images}
+          id={Number(idImage)}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </AppContainer>
+  );
+};

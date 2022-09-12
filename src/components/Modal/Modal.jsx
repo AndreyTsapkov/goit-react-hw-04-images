@@ -1,50 +1,49 @@
-import { Component } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PropTypes } from 'prop-types';
 import { Overlay, ModalStyled } from './Modal.styled';
 
 const modalRoot = document.querySelector('#modal-root');
 
-export class Modal extends Component {
-  componentDidMount() {
-    window.addEventListener('keydown', this.handleKeyDown);
-  }
+export const Modal = ({ onClose, images, id }) => {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
 
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handleKeyDown);
-  }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
-  handleKeyDown = event => {
+  const handleKeyDown = event => {
     if (event.code === 'Escape') {
-      this.props.onClose();
+      onClose();
     }
   };
 
-  handleBackdropClick = event => {
+  const handleBackdropClick = event => {
     if (event.target === event.currentTarget) {
-      this.props.onClose();
+      onClose();
     }
   };
 
-  findImage = () => {
-    const { images, id } = this.props;
+  const findImage = () => {
     if (id) {
       return images.find(image => image.id === id);
     }
   };
 
-  render() {
-    const foundImage = this.findImage();
-    return createPortal(
-      <Overlay onClick={this.handleBackdropClick}>
-        <ModalStyled>
-          <img src={foundImage.largeImageURL} alt={foundImage.tags} />
-        </ModalStyled>
-      </Overlay>,
-      modalRoot
-    );
-  }
-}
+  const foundImage = findImage();
+
+  return createPortal(
+    <Overlay onClick={handleBackdropClick}>
+      <ModalStyled>
+        <img src={foundImage.largeImageURL} alt={foundImage.tags} />
+      </ModalStyled>
+    </Overlay>,
+    modalRoot
+  );
+};
 
 Modal.propTypes = {
   images: PropTypes.array.isRequired,
